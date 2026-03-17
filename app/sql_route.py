@@ -36,5 +36,6 @@ def get_plot(entity_id:str):
 
     return StreamingResponse(plot_buf,media_type="image/png")
 
-
-
+@route.get("/analyzing_escape_patterns_after_an_attack")
+def analyzing_escape_patterns_after_an_attack():
+    return sqls.analyzing_escape_patterns_after_an_attack()

@@ -11,5 +11,19 @@ services:
       - mysql_data:/var/lib/mysql
       - ./db/dump.sql:/docker-entrypoint-initdb.d/dump.sql
 
+  api:
+    build: ./app
+    environment:
+      - HOST=mysql
+      - USER=root
+      - PASSWORD=root
+      - DATABASE=digital_hunter
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mysql
 volumes:
   mysql_data:
+
+
+

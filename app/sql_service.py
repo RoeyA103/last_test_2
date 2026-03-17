@@ -75,3 +75,49 @@ class SqlService():
                where entity_id = '{entity_id}' """
         return self.run_query(query)
 
+    def analyzing_escape_patterns_after_an_attack(self):
+        query = """WITH not_destroyed (attack_id)
+               as(
+               select attack_id from damage_assessments
+               where result != 'destroyed' ),
+               
+               attacks_not_destroyed
+               as(
+               select attacks.attack_id , 
+               min(attacks.timestamp) as start_attack , attacks.entity_id
+               from attacks
+               inner join not_destroyed
+               on attacks.attack_id = not_destroyed.attack_id
+               group by attacks.attack_id),
+
+               3_hour_befor
+               as( select intel_signals.entity_id ,
+                sum(intel_signals.distance_from_last) / ((max(intel_signals.timestamp) - min(intel_signals.timestamp) ) / 3600) as speed
+                from intel_signals
+               inner join attacks_not_destroyed
+               on intel_signals.entity_id = attacks_not_destroyed.entity_id
+               where hour(intel_signals.timestamp) < hour(attacks_not_destroyed.start_attack)
+               and hour(intel_signals.timestamp) > hour(attacks_not_destroyed.start_attack) -3
+               group by intel_signals.entity_id 
+               ),
+
+               3_hour_after
+               as(select intel_signals.entity_id ,
+                sum(intel_signals.distance_from_last) / ((max(intel_signals.timestamp) - min(intel_signals.timestamp) ) / 3600) as speed
+                from intel_signals
+               inner join attacks_not_destroyed
+               on intel_signals.entity_id = attacks_not_destroyed.entity_id
+               where hour(intel_signals.timestamp) > hour(attacks_not_destroyed.start_attack)
+               and hour(intel_signals.timestamp) < hour(attacks_not_destroyed.start_attack) + 3
+               group by intel_signals.entity_id
+               )
+
+
+               select 3_hour_after.entity_id , 3_hour_after.speed as efter ,
+               3_hour_befor.speed as before , (((3_hour_after.speed - 3_hour_befor.speed) * 100) /3_hour_befor.speed) as percent
+               from 3_hour_after
+               inner join 3_hour_befor
+               on 3_hour_after.entity_id = 3_hour_befor.entity_id
+               where 3_hour_after.speed > 3_hour_befor.speed * 2
+               """
+         return self.run_query(query)
