@@ -54,16 +54,17 @@ class SqlService():
         return self.run_query(query)
     
     def find_night_birds(self):
-        query = """select targets.entity_id from targets
+        query = """select intel_signals.entity_id , sum(intel_signals.distance_from_last)
+                 from intel_signals
                inner join (select round(min(reported_lat),0) , round(max(reported_lat),0)  , round(min(reported_lon),0),round(max(reported_lon),0),
                entity_id , count(*)
                 from intel_signals
                where HOUR(timestamp) between 8 and 20
                group by entity_id 
                having (round(min(reported_lat),0) + round(min(reported_lon),0)) = (round(max(reported_lat),0) + round(max(reported_lon),0))) as temp
-                on targets.entity_id = temp.entity_id
-               where movement_distance_km > 10
-
+               on intel_signals.entity_id = temp.entity_id
+               group by intel_signals.entity_id , day(timestamp)
+               having sum(distance_from_last) > 10
                   """
         
         return self.run_query(query)
@@ -72,42 +73,5 @@ class SqlService():
         query = f"""select reported_lat ,reported_lon 
                from intel_signals
                where entity_id = '{entity_id}' """
-        
         return self.run_query(query)
 
-import math
-
-def calculate_haversine_distance(lat1, lon1, lat2, lon2):
-    R = 6371.0
-
-    phi1, phi2 = math.radians(lat1), math.radians(lat2)
-    dphi = math.radians(lat2 - lat1)
-    dlambda = math.radians(lon2 - lon1)
-
-    a = math.sin(dphi / 2)**2 + \
-        math.cos(phi1) * math.cos(phi2) * \
-        math.sin(dlambda / 2)**2
-    
-    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-    return R * c
-
-def calculate_speed(dist_km, time_seconds):
-    if time_seconds <= 0:
-        return 0
-    hours = time_seconds / 3600
-    return dist_km / hours
-
-import datetime
-
-
-dt1 = datetime.datetime(2026, 3, 15, 11, 10, 55, 674765)
-dt2 = datetime.datetime(2026, 3, 15, 10, 54, 39, 606012)
-
-
-difference = dt1 - dt2
-
-print(f"Difference: {difference}")
-
-
-total_seconds = difference.total_seconds()
-print(f"Total seconds: {total_seconds}")
